@@ -1,65 +1,232 @@
-CREATE DATABASE agrowaste;
-USE agrowaste;
+<?php
 
-CREATE TABLE utilisateurs (
+$host="localhost";
+$dbname="agrowaste";
+$user="root";
+$password="";
 
-id INT AUTO_INCREMENT PRIMARY KEY,
+try{
 
-nom VARCHAR(100) NOT NULL,
-
-prenom VARCHAR(100) NOT NULL,
-
-email VARCHAR(150) UNIQUE NOT NULL,
-
-telephone VARCHAR(20),
-
-mot_de_passe VARCHAR(255) NOT NULL,
-
-role ENUM('producteur','acheteur','admin') NOT NULL,
-
-date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
+$pdo=new PDO(
+"mysql:host=$host;dbname=$dbname;charset=utf8",
+$user,
+$password
 );
 
-CREATE TABLE recoltes(
+$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 
-id INT AUTO_INCREMENT PRIMARY KEY,
+}catch(PDOException $e){
 
-utilisateur_id INT,
+die("Erreur : ".$e->getMessage());
 
-produit ENUM('Oignon','Pomme de terre'),
+}
 
-quantite DECIMAL(10,2),
+?>
+<?php
+session_start();
+require_once "php/config.php";
 
-prix DECIMAL(10,2),
+$message="";
 
-description TEXT,
+if(isset($_POST['register'])){
 
-date_recolte DATE,
+$nom=htmlspecialchars($_POST['nom']);
+$prenom=htmlspecialchars($_POST['prenom']);
+$email=htmlspecialchars($_POST['email']);
+$telephone=htmlspecialchars($_POST['telephone']);
+$role=$_POST['role'];
+$password=password_hash($_POST['password'],PASSWORD_DEFAULT);
 
-FOREIGN KEY(utilisateur_id)
-REFERENCES utilisateurs(id)
+$check=$pdo->prepare("SELECT id FROM utilisateurs WHERE email=?");
+$check->execute([$email]);
 
-);
+if($check->rowCount()>0){
 
-CREATE TABLE commandes(
+$message="Cet email existe déjà.";
 
-id INT AUTO_INCREMENT PRIMARY KEY,
+}else{
 
-acheteur_id INT,
+$sql=$pdo->prepare("INSERT INTO utilisateurs(nom,prenom,email,telephone,mot_de_passe,role)
+VALUES(?,?,?,?,?,?)");
 
-recolte_id INT,
+$sql->execute([
+$nom,
+$prenom,
+$email,
+$telephone,
+$password,
+$role
+]);
 
-quantite DECIMAL(10,2),
+header("Location: login.php");
 
-statut ENUM('En attente','Acceptée','Livrée','Annulée'),
+}
 
-date_commande TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+}
+?>
 
-FOREIGN KEY(acheteur_id)
-REFERENCES utilisateurs(id),
+<!DOCTYPE html>
+<html lang="fr">
 
-FOREIGN KEY(recolte_id)
-REFERENCES recoltes(id)
+<head>
 
-);
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Inscription | AGROWASTE</title>
+
+<link rel="stylesheet" href="assets/css/auth.css">
+
+</head>
+
+<body>
+
+<div class="form-container">
+
+<h2>Créer un compte</h2>
+
+<p style="color:red;"><?php echo $message; ?></p>
+
+<form method="POST">
+
+<input type="text" name="nom" placeholder="Nom" required>
+
+<input type="text" name="prenom" placeholder="Prénom" required>
+
+<input type="email" name="email" placeholder="Email" required>
+
+<input type="text" name="telephone" placeholder="Téléphone">
+
+<select name="role">
+
+<option value="producteur">Producteur</option>
+
+<option value="acheteur">Acheteur</option>
+
+</select>
+
+<input type="password" name="password" placeholder="Mot de passe" required>
+
+<button type="submit" name="register">
+
+S'inscrire
+
+</button>
+
+</form>
+
+<a href="login.php">
+
+Déjà un compte ?
+
+</a>
+
+</div>
+
+</body>
+
+</html>
+<?php
+
+session_start();
+
+require_once "php/config.php";
+
+$message="";
+
+if(isset($_POST['login'])){
+
+$email=$_POST['email'];
+
+$password=$_POST['password'];
+
+$sql=$pdo->prepare("SELECT * FROM utilisateurs WHERE email=?");
+
+$sql->execute([$email]);
+
+$user=$sql->fetch();
+
+if($user && password_verify($password,$user['mot_de_passe'])){
+
+$_SESSION['id']=$user['id'];
+
+$_SESSION['nom']=$user['nom'];
+
+$_SESSION['role']=$user['role'];
+
+if($user['role']=="admin"){
+
+header("Location: dashboard/admin/index.php");
+
+}elseif($user['role']=="producteur"){
+
+header("Location: dashboard/producteur/index.php");
+
+}else{
+
+header("Location: dashboard/acheteur/index.php");
+
+}
+
+exit();
+
+}else{
+
+$message="Email ou mot de passe incorrect.";
+
+}
+
+}
+
+?>
+
+<!DOCTYPE html>
+
+<html lang="fr">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Connexion</title>
+
+<link rel="stylesheet" href="assets/css/auth.css">
+
+</head>
+
+<body>
+
+<div class="form-container">
+
+<h2>Connexion</h2>
+
+<p style="color:red;"><?php echo $message; ?></p>
+
+<form method="POST">
+
+<input type="email" name="email" placeholder="Email" required>
+
+<input type="password" name="password" placeholder="Mot de passe" required>
+
+<button type="submit" name="login">
+
+Se connecter
+
+</button>
+
+</form>
+
+<a href="register.php">
+
+Créer un compte
+
+</a>
+
+</div>
+
+</body>
+
+</html>
