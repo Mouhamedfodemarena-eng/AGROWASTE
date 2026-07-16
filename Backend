@@ -1,4 +1,4 @@
-CREATE DATABASE agrowaste;
+ CREATE DATABASE agrowaste;
 USE agrowaste;
 
 CREATE TABLE utilisateurs (
